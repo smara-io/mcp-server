@@ -1,6 +1,6 @@
 # @smara/mcp-server
 
-MCP server for the [Smara Memory API](https://smara.io) — give any AI app persistent, decay-aware memory.
+MCP server for the [Smara Memory API](https://smara.io) — give any AI app persistent memory with Temporal Memory Scoring™.
 
 ## Quick Start
 
@@ -27,18 +27,14 @@ Get a free API key at [smara.io](https://smara.io) (10,000 memories, no credit c
 | Tool | Description |
 |------|-------------|
 | `store_memory` | Store a fact about a user with importance scoring |
-| `search_memories` | Semantic search with Ebbinghaus decay-aware ranking |
+| `search_memories` | Semantic search with Temporal Memory Scoring™ |
 | `get_user_context` | Pre-formatted context string for LLM system prompts |
 | `delete_memory` | Delete a specific memory |
 | `get_usage` | Check plan limits and memory count |
 
 ## How It Works
 
-Smara combines vector similarity search (Voyage AI embeddings) with Ebbinghaus forgetting curves. Memories decay over time — recent, frequently-accessed memories rank higher, just like human recall.
-
-```
-score = similarity × 0.7 + decay_score × 0.3
-```
+Smara uses **Temporal Memory Scoring™** — a proprietary ranking system that makes AI memory work like human recall. Memories naturally fade over time, modulated by importance and access patterns. Recent, critical memories surface first. Stale, trivial ones fade. Contradictions are auto-detected and resolved.
 
 ## Works With
 
