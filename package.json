@@ -1,6 +1,6 @@
 {
   "name": "@smara/mcp-server",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "mcpName": "io.github.parallelromb/smara",
   "description": "MCP server for Smara Memory API — persistent memory for AI agents",
   "type": "module",

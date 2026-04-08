@@ -18,7 +18,7 @@ When searching, include_team is automatically enabled so you see both private an
   : '';
 
 const server = new McpServer(
-  { name: "smara", version: "2.1.0" },
+  { name: "smara", version: "2.2.0" },
   {
     instructions: `You have access to Smara, a persistent cross-platform memory system. Memories stored here persist across conversations and are shared across all AI tools the user has connected.
 
@@ -27,6 +27,9 @@ AUTOMATIC BEHAVIOR (do this without being asked):
 2. WHEN YOU LEARN NEW FACTS: If the user shares a preference, correction, important decision, project detail, or personal fact, call store_memory to save it. Use importance 0.7-1.0 for preferences and corrections, 0.5 for general facts, 0.1-0.3 for trivia.
 3. WHEN THE USER SAYS "remember this" or "don't forget": Always call store_memory with importance 0.9.
 4. WHEN THE USER SAYS "forget this" or "delete that memory": Call search_memories to find the relevant memory, then call delete_memory with its ID.
+5. WHEN THE USER SAYS "make that private", "keep that to myself", "don't share that": Call update_memory to change visibility to "private".
+6. WHEN THE USER SAYS "share that with the team", "make that a team memory": Call update_memory to change visibility to "team".
+7. WHEN THE USER SAYS "show my memories" or "what do you remember": Call list_memories and present the results, clearly showing which are private vs team.
 
 ${userIdHint}
 ${teamHint}
@@ -194,6 +197,91 @@ server.registerTool(
   },
 );
 
+// ── Update a memory ─────────────────────────────────
+server.registerTool(
+  "update_memory",
+  {
+    title: "Update Memory",
+    description:
+      "Update a memory's visibility (private/team) or importance. Use when a user wants to make a memory private, share it with the team, or change its importance. Find the memory ID via search_memories or list_memories first.",
+    inputSchema: {
+      id: z.string().describe("The memory ID to update"),
+      visibility: z
+        .enum(["private", "team"])
+        .optional()
+        .describe("Change who can see this memory. 'private' = only this user. 'team' = all team members."),
+      importance: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe("Change importance score (0-1). Higher = slower decay."),
+    },
+  },
+  async ({ id, visibility, importance }) => {
+    const body: Record<string, unknown> = {};
+    if (visibility !== undefined) body.visibility = visibility;
+    if (importance !== undefined) body.importance = importance;
+
+    const data = await smaraFetch(`/v1/memories/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+// ── List memories ───────────────────────────────────
+server.registerTool(
+  "list_memories",
+  {
+    title: "List Memories",
+    description:
+      "List stored memories for a user with their visibility status (private or team). Use when the user wants to see what's remembered, review team vs private memories, or find a memory to update/delete.",
+    inputSchema: {
+      user_id: z.string().describe("User to list memories for"),
+      limit: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .default(20)
+        .describe("Max results to return"),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe("Pagination offset"),
+      namespace: z
+        .string()
+        .optional()
+        .describe("Memory namespace (default: from env or 'default')"),
+      visibility: z
+        .enum(["private", "team"])
+        .optional()
+        .describe("Filter by visibility. Omit to see both."),
+      team_id: z
+        .string()
+        .optional()
+        .describe("Team ID to include team memories. Defaults to SMARA_TEAM_ID env var."),
+    },
+  },
+  async ({ user_id, limit, offset, namespace, visibility, team_id }) => {
+    const effectiveTeamId = team_id || DEFAULT_TEAM_ID || undefined;
+    const params = new URLSearchParams({
+      user_id,
+      limit: String(limit),
+      offset: String(offset),
+      namespace: namespace || DEFAULT_NAMESPACE,
+    });
+    if (visibility) params.set("visibility", visibility);
+    if (effectiveTeamId) params.set("team_id", effectiveTeamId);
+
+    const data = await smaraFetch(`/v1/memories?${params}`);
+    return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
 // ── Delete a memory ─────────────────────────────────
 server.registerTool(
   "delete_memory",
@@ -229,7 +317,7 @@ server.registerTool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Smara MCP Server v2.1.0 running on stdio");
+  console.error("Smara MCP Server v2.2.0 running on stdio");
 }
 
 main().catch((error) => {
